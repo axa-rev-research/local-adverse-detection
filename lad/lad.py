@@ -2,7 +2,7 @@ import numpy, pandas
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import normalized_mutual_info_score
-from scipy.optimize import brute
+from scipy.optimize import brute, minimize_scalar
 from scipy.spatial.distance import euclidean
 
 import pylab
@@ -38,7 +38,6 @@ class LocalSurrogate():
         while len(support_points) < n_points_:
         
             n_points_left_ = n_points_ - len(support_points)
-            # About half the points are lost in the test hypercube => hypersphere
             lbound = numpy.repeat([self.support_points_min.values], n_points_left_, axis=0)
             hbound = numpy.repeat([self.support_points_max.values], n_points_left_, axis=0)
             candidates_ = numpy.random.uniform(low=lbound, high=hbound)
@@ -78,7 +77,7 @@ class LocalSurrogate():
             segment_points_x = segment_points_x.values.reshape(len(segment_points_x),)
 
             ## /!\ /!\ Issue when more than 2 classes ?
-            labels = (segment_points_x < x[0])*1
+            labels = (segment_points_x < x)*1
             score = normalized_mutual_info_score(segment_points_labels, labels.reshape(len(labels),))
             return (1-score)
             
@@ -87,10 +86,10 @@ class LocalSurrogate():
         
         ## Find the min of the information gain (or ~ measure to get the frontier frontier touchpoint)
         j = 0 # /!\ /!\ j=0 parce qu'on considère que c'est le x => à uniformiser / locker
-        res = brute(optim_objective, ranges=[(min(x_toexplain.iloc[j], support_point.iloc[j]), max(x_toexplain.iloc[j], support_point.iloc[j]))], args=(segment_points.iloc[:,[j]], segment_points_labels))
+        res = minimize_scalar(optim_objective, bounds=(min(x_toexplain.iloc[j], support_point.iloc[j]), max(x_toexplain.iloc[j], support_point.iloc[j])), args=(segment_points.iloc[:,[j]], segment_points_labels), method='bounded')
         
         # Once we got the x for the touchpoint, we compute the rest of the coordinates
-        touchpoint_x = numpy.array([res])
+        touchpoint_x = numpy.array([res.x])
         touchpoint_x.shape = (len(touchpoint_x),1)
         touchpoint_y = linear_model.predict(touchpoint_x)
         touchpoint = numpy.concatenate((touchpoint_x, touchpoint_y), axis=1)
