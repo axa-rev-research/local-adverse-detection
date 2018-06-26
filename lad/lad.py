@@ -169,6 +169,15 @@ class LocalSurrogate():
         surrogate = self.compute_surrogate(support_points)
         
         return support_points, surrogate
+    
+    def get_surrogate_feature_importance(self, X, surrogate, model_type='dtree'):
+        
+        if model_type == 'dtree':
+            cols = X.columns.tolist()
+            feature_importance = pandas.Series(surrogate.feature_importances_, index=cols)
+            
+        return feature_importance
+        
 
     def plot_classification_contour(self, X, clf, ax):
 
