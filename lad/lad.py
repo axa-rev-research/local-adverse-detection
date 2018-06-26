@@ -27,18 +27,28 @@ class LocalSurrogate():
         self.touchpoint_hypersphere_n_points = 10
         self.max_depth = max_depth
     
-    
+
     def get_support_points(self, x_toexplain):
+
+        n_points_ = self.n_support_points
+
+        y_x_toexplain = self.blackbox.predict([x_toexplain])[0]
         
         support_points = []
+        while len(support_points) < n_points_:
         
-        while len(support_points) < self.n_support_points:
-            candidate_ = numpy.random.uniform(low=self.support_points_min,
-                                       high=self.support_points_max)
+            n_points_left_ = n_points_ - len(support_points)
+            # About half the points are lost in the test hypercube => hypersphere
+            lbound = numpy.repeat([self.support_points_min.values], n_points_left_, axis=0)
+            hbound = numpy.repeat([self.support_points_max.values], n_points_left_, axis=0)
+            candidates_ = numpy.random.uniform(low=lbound, high=hbound)
             
-            if self.blackbox.predict([candidate_]) != self.blackbox.predict([x_toexplain]):
-                support_points.append(candidate_)
-        
+            y_preds = self.blackbox.predict(candidates_)
+            
+            for i in range(len(y_preds)):
+                if y_preds[i] != y_x_toexplain:
+                    support_points.append(candidates_[i])
+                    
         support_points = pandas.DataFrame(support_points, columns=x_toexplain.index)
         
         return support_points
@@ -77,12 +87,7 @@ class LocalSurrogate():
         
         ## Find the min of the information gain (or ~ measure to get the frontier frontier touchpoint)
         j = 0 # /!\ /!\ j=0 parce qu'on considère que c'est le x => à uniformiser / locker
-        res = brute(optim_objective,
-                    ranges=[(min(x_toexplain.iloc[j],
-                    support_point.iloc[j]),
-                    max(x_toexplain.iloc[j],
-                    support_point.iloc[j]))],
-                    args=(segment_points.iloc[:,[j]], segment_points_labels))
+        res = brute(optim_objective, ranges=[(min(x_toexplain.iloc[j], support_point.iloc[j]), max(x_toexplain.iloc[j], support_point.iloc[j]))], args=(segment_points.iloc[:,[j]], segment_points_labels))
         
         # Once we got the x for the touchpoint, we compute the rest of the coordinates
         touchpoint_x = numpy.array([res])
@@ -146,13 +151,9 @@ class LocalSurrogate():
 
         for i in range(self.n_support_points):
             support_point = support_points_.iloc[i]
-            segment_points, linear_model = self.get_segment_points(x_toexplain,
-                                                                support_point)
+            segment_points, linear_model = self.get_segment_points(x_toexplain, support_point)
 
-            touchpoint, segment_points_labels = self.get_segment_boundary_touchpoint(x_toexplain,
-                                                                                     support_point,
-                                                                                     segment_points,
-                                                                                     linear_model)
+            touchpoint, segment_points_labels = self.get_segment_boundary_touchpoint(x_toexplain, support_point, segment_points, linear_model)
 
             touchpoint_hypersphere_points = self.get_random_points_hypersphere_touchpoint(touchpoint)
 
