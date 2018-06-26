@@ -5,6 +5,10 @@ from sklearn.metrics import normalized_mutual_info_score
 from scipy.optimize import brute
 from scipy.spatial.distance import euclidean
 
+import pylab
+import seaborn as sns
+from matplotlib.colors import ListedColormap
+
 # to plot dtree
 from sklearn.externals.six import StringIO  
 from sklearn.tree import export_graphviz
@@ -166,6 +170,33 @@ class LocalSurrogate():
         
         return support_points, surrogate
 
+    def plot_classification_contour(self, X, clf, ax):
+
+        ## Inspired by scikit-learn documentation
+        h = .02  # step size in the mesh
+        cm = pylab.cm.RdBu
+        cm_bright = ListedColormap(['#FF0000', '#0000FF'])
+
+        # Generate mesh
+        x_min, x_max = X.iloc[:, 0].min() - .5, X.iloc[:, 0].max() + .5
+        y_min, y_max = X.iloc[:, 1].min() - .5, X.iloc[:, 1].max() + .5
+        xx, yy = numpy.meshgrid(numpy.arange(x_min, x_max, h), numpy.arange(y_min, y_max, h))
+
+        Z = clf.predict_proba(numpy.c_[xx.ravel(), yy.ravel()])[:, 1]
+        Z = Z.reshape(xx.shape)
+
+        pylab.sca(ax)
+        pylab.contourf(xx, yy, Z, alpha=.5, cmap=cm)
+    
+    def plot_classification_countour_line(self, X, clf, ax=None):
+        
+        xx, yy = numpy.mgrid[X.min().iloc[0]:X.max().iloc[0]:.01, X.min().iloc[1]:X.max().iloc[1]:.01]
+        grid = numpy.c_[xx.ravel(), yy.ravel()]
+        probs = clf.predict_proba(grid)[:, 1].reshape(xx.shape)
+        
+        if ax is None:
+            f, ax = pylab.subplots(1)
+        pylab.contour(xx, yy, probs, levels=[.5], cmap="Greys", vmin=0, vmax=.6, zorder=10)
     
     def plot_support_points(self, X, x_toexplain, support_points, ax=None,
                             plot_support_points=True,
@@ -175,9 +206,9 @@ class LocalSurrogate():
 
         colors = sns.color_palette()
         if ax is None:
-            f, ax = subplots(1)
+            f, ax = pylab.subplots(1)
 
-        plot_classification_contour(X, self.blackbox, ax)
+        self.plot_classification_contour(X, self.blackbox, ax)
 
         for i in range(self.n_support_points):
             support_point = support_points[i]
@@ -187,16 +218,18 @@ class LocalSurrogate():
                 support_point['segment_points'][support_point['segment_points_labels']==0].plot(kind='scatter', x=0, y=1, ax=ax, c=colors[3], marker='.')
                 support_point['segment_points'][support_point['segment_points_labels']==1].plot(kind='scatter', x=0, y=1, ax=ax, c=colors[0], marker='.')
             if plot_support_points:
-                plot(support_point['support_point'][0], support_point['support_point'][1], 'kx')
+                pylab.plot(support_point['support_point'][0], support_point['support_point'][1], 'kx')
             
             if plot_touchpoint_hypersphere_points:
                 for k in support_points.keys():
                     tmp = support_points[k]['touchpoint_hypersphere_points']
-                    plot(tmp[:,0], tmp[:,1],'.', color=colors[2])
+                    pylab.plot(tmp.iloc[:,0], tmp.iloc[:,1],'.', color=colors[2])
             if plot_touchpoints:
-                plot(support_point['touchpoint'][0], support_point['touchpoint'][1], c=colors[8], marker='o')
+                pylab.plot(support_point['touchpoint'][0], support_point['touchpoint'][1], c=colors[8], marker='o')
             
-            plot(x_toexplain[0], x_toexplain[1], 'rp')
+            pylab.plot(x_toexplain[0], x_toexplain[1], 'rp')
+            
+        return ax
             
     def plot_decision_tree(self, X, surrogate):
         
