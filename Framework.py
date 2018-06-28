@@ -22,7 +22,7 @@ from cleverhans_tutorials.tutorial_models import make_basic_cnn, MLP
 from cleverhans_tutorials.tutorial_models import Flatten, Linear, ReLU, Softmax
 from cleverhans.utils import TemporaryLogLevel
 
-from lad import lad_Thibault
+from lad import lad_Thibault as lad
 from scipy.spatial.distance import euclidean
 
 
