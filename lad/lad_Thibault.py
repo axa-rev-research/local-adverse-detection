@@ -127,7 +127,23 @@ class LocalSurrogate():
 
         return pandas.DataFrame(numpy.array(res))
 
-
+    def get_random_points_hypersphere_touchpoint2(self, touchpoint):
+        def norm(v):
+            return numpy.linalg.norm(v, ord=2, axis=1) #array of l2 norms of vectors in v
+        center = numpy.array(touchpoint.values)
+        radius_ = self.touchpoint_hypersphere_radius
+        segment = (0, radius_)
+        n = self.touchpoint_hypersphere_n_points
+        
+        res = []
+        d = center.shape[0]
+        z = numpy.random.normal(0, 1, (n, d))
+        z = numpy.array([a * b / c for a, b, c in zip(z, numpy.random.uniform(*segment, n),  norm(z))])
+        z = z + center
+        return z 
+    
+    
+    
     def compute_surrogate(self, support_points, plot=False):
         
         X_surrogate = []
@@ -158,10 +174,10 @@ class LocalSurrogate():
         for i in range(self.n_support_points):
             support_point = support_points_.iloc[i]
             segment_points, linear_model = self.get_segment_points(x_toexplain, support_point)
-
+            
             touchpoint, segment_points_labels = self.get_segment_boundary_touchpoint(x_toexplain, support_point, segment_points, linear_model)
 
-            touchpoint_hypersphere_points = self.get_random_points_hypersphere_touchpoint(touchpoint)
+            touchpoint_hypersphere_points = self.get_random_points_hypersphere_touchpoint2(touchpoint)
 
 
             support_points[i] = {
